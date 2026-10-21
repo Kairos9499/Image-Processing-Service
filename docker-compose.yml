@@ -1,0 +1,61 @@
+services:
+  init-storage:
+    build: .
+    user: "0:0"
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["mkdir -p /data/inputs /data/results && chown -R app:app /data"]
+    volumes:
+      - image_data:/data
+    restart: "no"
+
+  api:
+    build: .
+    command: ["api"]
+    depends_on:
+      init-storage:
+        condition: service_completed_successfully
+    environment:
+      GRPC_ADDR: ":50051"
+      DATA_DIR: "/data"
+      MAX_IMAGE_BYTES: "10485760"
+      MAX_PIXELS: "40000000"
+    ports:
+      - "50051:50051"
+    volumes:
+      - image_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "image-service", "health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  worker:
+    build: .
+    command: ["worker"]
+    depends_on:
+      init-storage:
+        condition: service_completed_successfully
+    environment:
+      DATA_DIR: "/data"
+      MAX_IMAGE_BYTES: "10485760"
+      MAX_PIXELS: "40000000"
+      WORKER_POLL_INTERVAL: "1s"
+    volumes:
+      - image_data:/data
+    restart: unless-stopped
+
+  client:
+    build: .
+    entrypoint: ["image-client"]
+    environment:
+      IMAGE_SERVICE_ADDR: "api:50051"
+    depends_on:
+      api:
+        condition: service_started
+    profiles: ["client"]
+    stdin_open: true
+    tty: true
+
+volumes:
+  image_data:
