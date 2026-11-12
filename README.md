@@ -60,6 +60,7 @@ docker compose --profile client run --rm -it -v "%cd%:/images" client
 
 ## gRPC API
 
+gRPC используется для связи CLI-клиента с API-сервисом.
 Контракт находится в `api/v1/image_service.proto`, сгенерированный Go-код — в `gen/image/v1`. Для локального вызова можно использовать `grpcurl` с reflection не включённым, передав proto-файл:
 
 ```bash
